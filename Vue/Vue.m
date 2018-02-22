@@ -1,8 +1,13 @@
 classdef Vue < handle
     % La Vue est la classe qui s'occupe de l'affichage des données mises à
     % jour dans le modèle
+    
+    % The "Vue" (View) is the class which deals with the display of the
+    % data which have been updated in the model
     properties
         interface_homme_machine % aussi appelée interface graphique
+        
+                                % also called graphic interface
         modele
         controleur
     end
@@ -10,44 +15,70 @@ classdef Vue < handle
     properties (Access = private)
         gris = [0.83,0.82,0.78] % définition de la couleur grise en encodage
                                 % rouge-vert-bleu (RVB)
+                                
+                                % definition of the grey color in RGB
+                                % (red-green-blue)encoding 
     end
     
     methods
         function soi = Vue(controleur)
             %Constructeur de la vue
             
+            % Builder of the view
             soi.controleur = controleur;
             soi.modele = controleur.modele;
             
             
             %% On instancie l'interface homme machine et on lui passe comme
             % argument le controleur
+            
+            % Instantiates the Man-machine interface and gives it the
+            % controler as an argument
             soi.interface_homme_machine = Ultrasound_4D_Images_Analyser('controleur',soi.controleur);
             
             
             %% On pirate MATLAB en changeant ses variables Java pour que les
             % bulles d'aide ne disparaissent plus au bout de 10 secondes
             
+            % Hacks Matlab by changing its Java variables so that the help
+            % popupwindows last more than 10 seconds
+            
             % On appelle une méthode statique pour obtenir un objet ToolTipManager
+            
+            % Calls a statistical method in order to obtain a
+            % TollTipManager object
             tm = javax.swing.ToolTipManager.sharedInstance; 
             
             % On prend le plus grand entier signé codé sur 32 bits soit
             % 2^31 (le 32ème bit correspond au signe)
+            
+            % Takes the biggest 32-bits signed integer 
+            % which is 2^31 (the 32nd bit corresponds to the sign)
             long_temps_de_disparition = intmax('int32');
             
             % On paramètre le temps de désapparation (qui est lui-même
             % un entier signé codé sur 32-bit) pour qu'il vale
             % long_temps_de_disparation
+            
+            % Sets the dismiss delay (which is a 32-bit signed
+            % integer) so that is equals to "long_temps_de_disparition"
+            % (long dimiss delay / time before the popup disappears)
             javaMethodEDT('setDismissDelay',tm,long_temps_de_disparition);
             
             % On paramètre le temps d'apparition pour qu'il soit instantané
             % (égal à 0 secondes)
+            
+            % Sets the apparition delay to 0 seconds (instantaneous)
             javaMethodEDT('setInitialDelay',tm,0);
            
             
             %% On observe les changements de paramètres de modèle, et le cas
             % échéant, on appelle la méthode statique
             % reagir_aux_observations (elle appartient à cette classe)
+            
+            % Observes the changes in the paramter settings of the model
+            % and calls the static method "reagir_aux_observations" (react
+            % to observations. This method belongs to this class)
             addlistener(soi.modele,'image','PostSet', ...
                 @(information_propriete_modifiee,evenement)Vue.reagir_aux_observations(soi,information_propriete_modifiee,evenement));
             addlistener(soi.modele,'chemin_donnees','PostSet', ...
@@ -83,36 +114,62 @@ classdef Vue < handle
             % Selon la propriété du modèle qui est modifiée, on affiche ce
             % qui est nécessaire dans l'interface homme machine
             
+            % Depending on the property of the model that is modified,
+            % displays what is necessay in the man-machine interface
+            
             % On récupère l'objet dont la propriété a été modifiée
             % (dans notre cas il sera toujours le modèle)
+            
+            % Gets the object whose property has been modified (in this
+            % case it will always be the model)
             objet_concerne = evenement.AffectedObject;
             
             % On récupère l'objet dont les propriétés définissent
             % l'interface graphique : handles (voir le site de Matlab,
             % partie GUI pour plus d'informations)
+            
+            % Gets the object whose properties define the graphic interface
+            % : handles (cf Matlab website about GUI for more information)
             handles = guidata(soi.interface_homme_machine);
             
             % Selon le nom de la propriété du modèle qui est modifiée, 
             % on affiche ce qui est nécessaire dans l'interface homme machine
+            
+            % Depending on the name of the model property that has been
+            % modified, displays what is necessary in the man-machine
+            % interface
             switch information_propriete_modifiee.Name
                 
                 case 'image'
                     % on se positionne dans l'axe de l'affichage de l'image
+                    
+                    % Takes position in the display axis of the image
                     axes(handles.image);
                     
                     %% On opère une translation sur l'image récupérée du
                     % modèle pour passer du systèmes de coordonnées
                     % "indices de matrice" à "cartésiennes"
+                    
+                    % Performs a translation on the image taken from the
+                    % model in order to swap from "matrix index"
+                    % coordinates to "cartesian" coordinates
                     image_a_afficher=objet_concerne.image';
                     
                     %% On force l'affichage des axes de l'image
+                    
+                    % Sets the display of the axes on the image
                     iptsetpref('ImshowAxesVisible','on');
                     
                     %% On affiche l'image 
+                    
+                    % Displays the image
                     imshow(image_a_afficher);
                     
                     %% On lie les l'échelle des données à l'échelle de
                     % couleur d'affichage par une fonction linéaire
+                    
+                    % Connects the data scale to the color scale by a
+                    % linear function
                     set(handles.image.Children,'CDataMapping','direct');
                     
                     %% On récupère le menu contextuel créé via l'outil GUIDE
@@ -120,43 +177,52 @@ classdef Vue < handle
                     % Cela permet d'avoir le menu contextuel qui apparait
                     % au-dessus de l'image, et non en-dessous comme par
                     % défaut
+                    
+                    % Gets the context menu created using the GUIDE tool
+                    % and places it in the child of the image display
+                    % This enables to have the context menu appear overhead 
+                    % the image instead of under the image (default)
                     menu_contextuel = get(handles.image,'UIContextMenu');
                     set(handles.image.Children,'UIContextMenu',menu_contextuel);
                     
                     %% Selon l'orientation du plan choisi (vue_choisie)
                     % on change le titre de l'image, et le nom des axes
+                    
+                    % Changes the title of the image and the names of the
+                    % axes depending on the orientation of the plane that
+                    % has been chosen (vue_choisie)
                     switch objet_concerne.volumes.vue_choisie
-                        case 0 % plan axial
+                        case 0 % plan axial % axial plane
                             axe1='X';
                             axe2='Y';
                             axe3='Z';
                             axe4='Temps';
                             title({'Plan axial', [axe3 '=' num2str(objet_concerne.volumes.coordonnee_axe3_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(3)) ', ' axe4 '=' num2str(objet_concerne.volumes.coordonnee_axe4_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(4))]});
-                        case 1 % plan latéral
+                        case 1 % plan latéral % lateral plane
                             axe1='X';
                             axe2='Z';
                             axe3='Y';
                             axe4='Temps';
                             title({'Plan latéral',[axe3 '=' num2str(objet_concerne.volumes.coordonnee_axe3_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(3)) ', ' axe4 '=' num2str(objet_concerne.volumes.coordonnee_axe4_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(4))]});
-                        case 2 % plan transverse
+                        case 2 % plan transverse % transverse plane
                             axe1='Y';
                             axe2='Z';
                             axe3='X';
                             axe4='Temps';
                             title({'Plan transverse', [axe3 '=' num2str(objet_concerne.volumes.coordonnee_axe3_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(3)) ', ' axe4 '=' num2str(objet_concerne.volumes.coordonnee_axe4_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(4))]});
-                        case 3 % plan x-temps
+                        case 3 % plan x-temps % x-time plane
                             axe1='Temps';
                             axe2='X';
                             axe3='Z';
                             axe4='Y';
                             title({'Plan x-temps', [axe3 '=' num2str(objet_concerne.volumes.coordonnee_axe3_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(3)) ', ' axe4 '=' num2str(objet_concerne.volumes.coordonnee_axe4_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(4))]});
-                        case 4 % plan y-temps
+                        case 4 % plan y-temps % y-time plane
                             axe1='Temps';
                             axe2='Y';
                             axe3='Z';
                             axe4='X';
                             title({'Plan y-temps', [axe3 '=' num2str(objet_concerne.volumes.coordonnee_axe3_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(3)) ', ' axe4 '=' num2str(objet_concerne.volumes.coordonnee_axe4_selectionnee) '/' num2str(objet_concerne.volumes.taille_axes(4))]});
-                        case 5 % plan z-temps
+                        case 5 % plan z-temps % z-time plane
                             axe1='Temps';
                             axe2='Z';
                             axe3='Y';
@@ -165,15 +231,24 @@ classdef Vue < handle
                     end;
                     
                     %% On affiche la légende de l'axe des abscisses de l'image
+                    
+                    % Displays the caption of the X-axis of the image
                     if strcmp(axe1,'Temps')
                         % Si le temps est en abscisses, l'unité est le pas de temps
+                        
+                        % If the time is the X-axis, the unit is the
+                        % time-step
                         xlabel([axe1,' (en pas de temps)']);
                     else
                         % Sinon, ce sont des pixels
+                        
+                        % otherwise, the unit is the pixels
                         xlabel([axe1,' (en pixels)']);
                     end
                     
                     %% On affiche la légende des ordonnées de l'image
+                    
+                    % Displays the caption of the Y-axis of the image
                     ylabel([axe2, ' (en pixels)']);
                     
                     %% On remet à zéro l'affichage
@@ -186,6 +261,17 @@ classdef Vue < handle
                     % à jour par les observateurs inclus dans la vue. Mais
                     % j'ai fait le mauvais choix au début, et je manque de
                     % temps maintenant pour tout changer.
+                    
+                    % Resets the display
+                    % This is useful if an image has already been displayed
+                    % and some computation performed, and that the user
+                    % wants to display another image
+                    % Note : resetting the display is not a good method, I
+                    % should rather have reset the properties of the model
+                    % and let the display update using the observers
+                    % included in the view. But I made the wrong choice
+                    % when I first wrote this code, and do not have enough
+                    % time left to change everything.
                     gris = soi.gris;
                     set(handles.affichage_entropie,'String',[],'BackgroundColor',gris);
                     set(handles.affichage_coefficient_variation,'String',[],'BackgroundColor',gris);
@@ -211,6 +297,10 @@ classdef Vue < handle
                     %% Quand on fait des modifications de l'orientation du plan,
                     % ou quand on glisse entre les plans, on doit mettre à
                     % jour l'affichage. C'est ce qu'on fait ici.
+                    
+                    % Updates the display when the user modifies the
+                    % orientation of the plane or when he scrolls through
+                    % the planes.
                     set(handles.valeur_axe3_image,'String',objet_concerne.volumes.coordonnee_axe3_selectionnee,'enable','on','BackgroundColor','white');
                     set(handles.valeur_axe4_image,'String',objet_concerne.volumes.coordonnee_axe4_selectionnee,'enable','on','BackgroundColor','white');
                     set(handles.axe1_graphique,'String',axe1);
@@ -239,13 +329,20 @@ classdef Vue < handle
                 case 'chemin_donnees'
                     % On affiche le chemin des données à charger
                     % sélectionné
+                    
+                    % Displays the pathway of the data that have to be
+                    % loaded selected by the user
                     set(handles.chemin_dossier,'String',objet_concerne.chemin_donnees);
                     
                 case 'donnees_region_interet'
                     %% On efface le graphique précédent
+                    
+                    % Clears the previous graph
                     cla(handles.affichage_graphique,'reset');
                     
                     %% On efface la region d'intérêt tracée précédemment
+                    
+                    % Clears the previously traced ROI
                     cla(handles.image.Children);
 
                     if isfield(handles,'rectangle_trace')
@@ -257,12 +354,20 @@ classdef Vue < handle
                     end
                     
                     %% On choisit les axes de l'image
+                    
+                    % Chooses the axes of the image
                     axes(handles.image);
                     
                     %% Si on a choisi une région d'intérêt rectangulaire
+                    
+                    % If the user has chosen a rectangular region of
+                    % interest
                     if isa(objet_concerne.region_interet,'Region_interet_rectangle')
                         %% On affiche les coordonnées de début et de fin 
                         % du rectangle, sur ses deux axes
+                        
+                        % Displays the coordinates of the beginning and of
+                        % the end of the rectangle, on both axes
                         set(handles.valeur_axe1Debut_graphique,'String',...
                             num2str(objet_concerne.region_interet.coordonnee_axe1_debut));
                         set(handles.valeur_axe2Debut_graphique,'String',...
@@ -274,6 +379,9 @@ classdef Vue < handle
                         
                         %% On affiche un rectangle rouge sur l'image correspondant
                         % à la région d'intérêt précédemment définie
+                        
+                        % Displays a red rectangle on the image
+                        % corresponding to the ROI specified previouly
                         handles.rectangle_trace = rectangle('Position',...
                             [objet_concerne.region_interet.coordonnee_axe1_debut...
                             objet_concerne.region_interet.coordonnee_axe2_debut...
@@ -283,6 +391,9 @@ classdef Vue < handle
                         %% Si on a choisit une région d'intérêt rectangulaire
                         % on permet tous les choix d'axes de moyennes et
                         % d'abscisses
+                        
+                        % If the chosen ROI is rectangular, enables all the
+                        % axes for means and for X-axis
                         set(handles.moyenne_axe1,'Visible','on');
                         set(handles.moyenne_axe2,'Visible','on');
                         set(handles.pas_de_moyenne,'Visible','on');
@@ -290,18 +401,31 @@ classdef Vue < handle
                         set(handles.abscisses_axe2,'Visible','on');
                         
                     %% Si on a choisi une région d'intérêt polygonale
+                    
+                    % If the user has chose the shape of the ROI to be a
+                    % polygon
                     elseif isa(objet_concerne.region_interet,'Region_interet_polygone')
                         % On utilise un bloc try... catch pour gérer les
                         % erreurs
+                        
+                        % Uses a try...catch bloc to manage the errors
                         try
                             % On récupère la taille courante des axes
+                            
+                            % Gets the current size of the axes
                             taille_axes = objet_concerne.volumes.taille_axes;
                             
                             % On obtient les positions du polygone
+                            
+                            % Gets the positions of the polygon
                             positions_polygone=getPosition(objet_concerne.region_interet.polygone);
                             
                             %% On détecte si le polygone sort de l'espace de l'image
                             % et on renvoie une erreur le cas échéant
+                            
+                            % Detects whether the polygon trespasses the
+                            % space of the image and returns an error if it
+                            % is the case
                             nb_positions_polygone = size(positions_polygone,1);
                             maximum_axe1=taille_axes(1);
                             maximum_axe2=taille_axes(2);
@@ -316,11 +440,15 @@ classdef Vue < handle
                             end
                             
                             %% On trace le polygone sur l'image
+                            
+                            % Traces the polygon on the image
                             ordre_des_points=1:nb_positions_polygone;
                             polygone_trace=patch('Faces',ordre_des_points,'Vertices',positions_polygone,'FaceColor','none','EdgeColor','red');
                             handles.polygone_trace=polygone_trace;
                             
                             %% On efface l'objet de sélection de la région d'intérêt
+                            
+                            % Deletes the object of selection of the ROI
                             delete(objet_concerne.region_interet.polygone);
                          catch erreurs
                             if (strcmp(erreurs.identifier,'polygone_Callback:sortie_de_image'))
@@ -328,6 +456,11 @@ classdef Vue < handle
                                 % on envoie un avertissement et on
                                 % supprimer l'objet de sélection de la
                                 % région d'intérêt
+                                
+                                % If the selection has gone out of the
+                                % image while proceeding to the selection,
+                                % returns a warning and deletes the object
+                                % of selection of the ROI
                                 warndlg('Merci d''entrer une région d''intérêt incluse dans l''image.');
                                 causeException = MException(erreur_sortie_de_image.identifier,erreur_sortie_de_image.message);
                                 erreurs = addCause(erreurs,causeException);
@@ -335,12 +468,19 @@ classdef Vue < handle
                             end
                             % On envoie les erreurs qui n'auraient pas été
                             % traitées
+                            
+                            % Reissues the errors that have not been
+                            % managed / dealt with
                             rethrow(erreurs);
                         end
                         
                         %% Si on a choisit une région d'intérêt polygonale,
                         % on ne peut pas choisir tous les axes d'abscisses
                         % et d'affichage de l'image
+                        
+                        % If the user has chosen a polygonal shape for the
+                        % region of interst, not all the axes can be chosen
+                        % for the X-axis and the display of the image
                         set(handles.moyenne_axe1et2,'Value',1);
                         set(handles.moyenne_axe1,'Visible','off');
                         set(handles.moyenne_axe2,'Visible','off');
@@ -352,6 +492,9 @@ classdef Vue < handle
                     end
                     
                     %% Une fois la région d'intérêt choisie, on peut calculer les indices de texture
+                    
+                    % Once the ROI has been chosen, the texture indexes can
+                    % be computed
                     set(handles.affichage_entropie,'BackgroundColor','white','String',[]);
                     set(handles.affichage_coefficient_variation,'String',[],'BackgroundColor','white');
                     set(handles.affichage_contraste,'String',[],'BackgroundColor','white');
@@ -369,6 +512,15 @@ classdef Vue < handle
                     % à jour par les observateurs inclus dans la vue. Mais
                     % j'ai fait le mauvais choix au début, et je manque de
                     % temps maintenant pour tout changer.
+                    
+                    % Resets the display of the future parameters in case
+                    % of it is not the first displayed image
+                    % Note : resetting the display is not a good method, I
+                    % should rather have reset the properties of the model
+                    % and let the display update using the observers
+                    % included in the view. But I made the wrong choice
+                    % when I first wrote this code, and do not have enough
+                    % time left to change everything.
                     gris = soi.gris;
                     set(handles.facteur_temps_I_max,'Enable','inactive','BackgroundColor',gris);
                     set(handles.facteur_sous_echantillonnage,'Enable','inactive','BackgroundColor',gris);
@@ -381,13 +533,19 @@ classdef Vue < handle
                     
                 case 'entropie_region_interet'
                     % On affiche l'entropie calculée
+                    
+                    % Displays the computed entropy
                     set(handles.affichage_entropie,'String',num2str(objet_concerne.entropie_region_interet));
                 case 'coefficient_variation_region_interet'
                     % On affiche le coefficient de variation dans la région
                     % d'intérêt
+                    
+                    % Displays the coefficient of variation in the ROI
                     set(handles.affichage_coefficient_variation,'String',num2str(objet_concerne.coefficient_variation_region_interet));
                 case 'energie_matrice_cooccurrence_region_interet'
                     % On affiche les indices calculés sur la matrice de cooccurrences
+                    
+                    % Displays the computed co-occurence matrix indexes
                     set(handles.affichage_energie,'String',num2str(objet_concerne.energie_matrice_cooccurrence_region_interet));
                     set(handles.affichage_contraste,'String',num2str(objet_concerne.contraste_matrice_cooccurrence_region_interet));
                     set(handles.affichage_correlation,'String',num2str(objet_concerne.correlation_matrice_cooccurrence_region_interet));
@@ -396,9 +554,13 @@ classdef Vue < handle
                     
                     
                     %% On efface la/les courbe(s) précédentes
+                    
+                    % Deletes previous curves
                     cla(handles.affichage_graphique);
                     
                     %% On affiche la/les courbes
+                    
+                    % Displays the curve(s)
                     axes(handles.affichage_graphique);
                     hold on
                     plot(objet_concerne.graphique.abscisses,objet_concerne.graphique.ordonnees,'displayname','Courbe originale','HitTest', 'off');
@@ -408,9 +570,14 @@ classdef Vue < handle
                     hold off
                     
                     %% On affiche le titre
+                    
+                    % Displays the title
                    
                     % Selon le nombre de courbes, on affiche un titre
                     % différent (au singulier ou au pluriel)
+                    
+                    % Displays a different title depending on the number of
+                    % curves (singular or plural)
                     if objet_concerne.graphique.une_seule_courbe
                         titre='Courbe d''intensité';
                     else
@@ -421,6 +588,8 @@ classdef Vue < handle
                     
                     %% On affiche la légende des abscisses
                     
+                    % Displays the X-axis caption
+                    
                     % Explication sur la variable ordre_axes :
                     % 1 représente X, 2 -> Y, 3 -> Z, 4 -> Temps
                     % L'ordre des axes est signifié par l'ordre
@@ -429,6 +598,15 @@ classdef Vue < handle
                     % image affichée avec en abscisses X, en
                     % ordonnées Y, en 3ème dimension Z
                     % et en 4ème dimension le temps
+                    
+                    % Explanation on the variable "ordre_axes" (axes order)
+                    % :
+                    % 1 is X, 2 -> Y, 3 -> Z, 4 -> time
+                    % The order of the axes is given by the order in the
+                    % list ordre_axes.
+                    % For instance, ordre_axes = [1,2,3,4] corresponds to
+                    % an image displayed with X as X-axis, Y as Y-axis, Z
+                    % as 3nd dimension and time as 4th dimension
                     ordre_axes=objet_concerne.volumes.ordre_axes;
                     
                     axe_abscisses_choisi = objet_concerne.graphique.axe_abscisses_choisi;
@@ -442,6 +620,8 @@ classdef Vue < handle
                     xlabel(legende_abscisses);
                     
                     %% On affiche la légende des ordonnees
+                    
+                    % Displays the Y-axis caption
                     
                     switch objet_concerne.graphique.axe_moyenne_choisi
                         case '1'
@@ -462,6 +642,9 @@ classdef Vue < handle
                     
                     %% On indique les nouvelles fonctionnalités disponibles dans l'interface_homme_machine
                     
+                    % Shows the new features available in the
+                    % "interface_homme_machine" (man-machine interface)
+                    
                     set(handles.choix_du_pic,'enable','on','BackgroundColor','white');
                     set(handles.choix_de_deux_pics,'enable','on','BackgroundColor','white');
                     set(handles.lmh_affichage,'BackgroundColor','white');
@@ -477,6 +660,14 @@ classdef Vue < handle
                     % j'ai fait le mauvais choix au début, et je manque de
                     % temps maintenant pour tout changer.
                     
+                    % Removes the features that are still available
+                    % Note : resetting the display is not a good method, I
+                    % should rather have reset the properties of the model
+                    % and let the display update using the observers
+                    % included in the view. But I made the wrong choice
+                    % when I first wrote this code, and do not have enough
+                    % time left to change everything.
+                    
                     gris = soi.gris;
                     set(handles.facteur_temps_I_max,'Enable','inactive','BackgroundColor',gris);
                     set(handles.facteur_sous_echantillonnage,'Enable','inactive','BackgroundColor',gris);
@@ -484,22 +675,32 @@ classdef Vue < handle
                 case 'largeur_a_mi_hauteur_pic_choisi'
                     
                     %% On affiche la liste des pics et la largeur à mi hauteur du pic choisi
+                    
+                    % Displays the list of the peaks and the full-width
+                    % half-maximum of the chosen peak
                     set(handles.choix_du_pic,'String',objet_concerne.graphique.pics.liste);
                     set(handles.lmh_affichage,'String', objet_concerne.largeur_a_mi_hauteur_pic_choisi);
                     
                     %% on montre que l'on peut maintenant sous-échantillonner les données
+                    
+                    % Shows that the data can be sub-sampled now
                     set(handles.facteur_temps_I_max,'Enable','on','BackgroundColor','white');
                     set(handles.facteur_sous_echantillonnage,'Enable','on','BackgroundColor','white');
                     
                 case 'distance_pic_a_pic_choisie'
                     
                     %% On affiche la liste des combinaisons de pics 
-                    %et la distance pics à pics de la combinaison choisie
+                    % et la distance pics à pics de la combinaison choisie
+                    
+                    % Displays the list of the peaks pairings and the
+                    % peak-to-peak distance of the chosen pairing
                     set(handles.choix_de_deux_pics,'String',objet_concerne.graphique.pics.liste_combinaisons_de_deux_pics);
                     set(handles.dpap_affichage,'String',objet_concerne.distance_pic_a_pic_choisie);
                     
                 case 'vecteur_temps_sous_echantillonnage'
                     %% On efface le graphique précédent
+                    
+                    % Deletes the previous graph
                     cla(handles.affichage_graphique);
                     
                     %% On affiche le sous-échantillonnage par des points
@@ -508,43 +709,68 @@ classdef Vue < handle
                     % temps est sauvegardé.
                     % Qu'il n'y en a pas, le pas de temps n'est pas
                     % sauvegardé.
+                    
+                    % Displays the sub-sampling by dots on the graph
+                    % The presence of a dot means that this time-step is
+                    % saved. When there is no dot, the time-step is not
+                    % saved.
 
                     axes(handles.affichage_graphique);
                     hold on
                     %% On réaffiche la courbe originale
+                    
+                    % Re-displays the original curve
                     plot(objet_concerne.graphique.abscisses,objet_concerne.graphique.ordonnees,'displayname','Courbe originale','HitTest', 'off');
                     
                     %% On récupère les paramètres du sous-échantillonnage
+                    
+                    % Gets the sub-sampling parameters
                     vecteur_t_ech_normal = objet_concerne.vecteur_temps_echantillonnage_normal;
                     vecteur_t_ssech = objet_concerne.vecteur_temps_sous_echantillonnage;
                     
                     %% Si le point est noir, il correspond à la partie de
                     % l'enregistrement non sous-échantilloné
+                    
+                    % Black dots correspond to the part of the record that
+                    % is not sub-sampled
                     points_ech_normal = plot(vecteur_t_ech_normal,objet_concerne.graphique.ordonnees(vecteur_t_ech_normal),'black+','displayname','Pas sous-échantillonné','HitTest', 'off');
                     
                     %% Si il est rouge, il appartient à la partie de
                     % l'enregistrement sous-échantillonné
+                    
+                    % Red dots correspond to the part of the record that
+                    % is sub-sampled
                     points_ssech = plot(vecteur_t_ssech,objet_concerne.graphique.ordonnees(vecteur_t_ssech),'red+','displayname','Sous-échantillonné','HitTest', 'off');
                     legend([points_ech_normal,points_ssech]);
                     hold off
                     
                 case 'chemin_enregistrement_export_graphique'
                     %% On enregistre le graphique
+                    
+                    % Saves the graph
                     export_fig(handles.affichage_graphique, objet_concerne.chemin_enregistrement_export_graphique);
                 case 'chemin_enregistrement_export_image'
                     %% On enregistre l'image
+                    
+                    % Saves the image
                     export_fig(handles.image, objet_concerne.chemin_enregistrement_export_image);
                 case 'chemin_enregistrement_export_interface'
                     %% On enregistre l'interface entière
+                    
+                    % Saves the whole interface
                     export_fig(handles.figure1, objet_concerne.chemin_enregistrement_export_interface);
                     
             end
         %% On enregistre les modifications faites à l'interface
+        
+        % Saves the modifications made to the interface
         guidata(handles.figure1,handles);
         end
         
         function aide
             % On affiche un message d'aide
+            
+            % Displays a help popup message
             
             msgbox({'L''aide spécifique aux différentes fonctionnalités du programme est accessible en passant le pointeur de la souris', ...
                 'sur les points d''interrogation blancs, entourés de rectangles bleu layette, disséminés dans l''interface graphique.', ...
@@ -581,6 +807,7 @@ classdef Vue < handle
         function choisir_axe_image(soi)
             % On sélectionne les axes de l'image (pour affichage)
             
+            % Selects the image axes (for display)
             handles = guidata(soi.interface_homme_machine);
             axes(handles.image);
         end
@@ -588,6 +815,7 @@ classdef Vue < handle
         function choisir_axe_affichage_graphique(soi)
             % On sélectionne les axes du graphique (pour affichage)
             
+            % Selects the graph axes (for display)
             handles = guidata(soi.interface_homme_machine);
             axes(handles.affichage_graphique);
         end
@@ -600,6 +828,13 @@ classdef Vue < handle
             % Note : il aurait mieux fallu faire une remise à zéro au sein
             % du modèle
             
+            % We select the first choice within the list of peaks
+            % To avoid the following error : I choose the 2nd detected
+            % peak, then I want to detect only one peak : my choice of the
+            % 2nd peak is not valid anymore
+            % Note : it would have been better to do a reset in the model
+            
+
             handles = guidata(soi.interface_homme_machine);
             set(handles.choix_du_pic,'Value',1);
         end
@@ -609,6 +844,10 @@ classdef Vue < handle
             % de la liste des combinaisons de pics
             % Note : il aurait mieux fallu faire une remise à zéro au sein
             % du modèle
+            
+            % Selects the firt pair of peaks in the list of pairs of peaks
+            % Note : it would have been better to do a reset in the model
+            
             handles = guidata(soi.interface_homme_machine);
             set(handles.choix_de_deux_pics,'Value',1);
         end
